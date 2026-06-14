@@ -2,8 +2,7 @@ import requests
 from flask import current_app
 
 
-GEOCODING_URL = "https://api.openweathermap.org/geo/1.0/direct"
-CURRENT_URL = "https://api.openweathermap.org/data/2.5/weather"
+FIND_URL = "https://api.openweathermap.org/data/2.5/find"
 
 
 class OpenWeatherConfigError(RuntimeError):
@@ -18,48 +17,24 @@ def get_openweather_api_key():
     return api_key
 
 
-def geocode_location(location):
+def find_current_weather(location):
     response = requests.get(
-        GEOCODING_URL,
+        FIND_URL,
         params={
-            "q": f"{location},CA,US",
-            "limit": 1,
+            "q": location,
+            "units": "imperial",
+            "type": "accurate",
             "appid": get_openweather_api_key(),
         },
         timeout=10,
     )
     response.raise_for_status()
 
-    matches = response.json()
-    if not matches:
+    results = response.json().get("list", [])
+    if not results:
         return None
 
-    match = matches[0]
-    return {
-        "name": match.get("name", location),
-        "state": match.get("state"),
-        "country": match.get("country"),
-        "lat": match["lat"],
-        "lon": match["lon"],
-    }
-
-
-def get_current_weather(lat, lon):
-    response = requests.get(
-        CURRENT_URL,
-        params={
-            "lat": lat,
-            "lon": lon,
-            "appid": get_openweather_api_key(),
-            "units": "imperial",
-        },
-        timeout=10,
-    )
-    response.raise_for_status()
-
-    weather = response.json()
-    main = weather.get("main", {})
-
+    main = results[0].get("main", {})
     return {
         "temp_f": main.get("temp"),
         "humidity": main.get("humidity"),

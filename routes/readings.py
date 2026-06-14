@@ -5,14 +5,12 @@ from extensions import db
 from models import Reading
 from services.openweather import (
     OpenWeatherConfigError,
-    get_current_weather,
+    find_current_weather,
 )
 
 
 readings_bp = Blueprint("readings", __name__)
-DEFAULT_LOCATION_NAME = "Redwood City, CA, US"
-DEFAULT_LAT = 37.49
-DEFAULT_LON = -122.23
+DEFAULT_LOCATION_NAME = "Redwood City"
 
 
 def ensure_schema():
@@ -32,9 +30,10 @@ def serialize_reading(reading):
 
 
 def fetch_current_weather_for_location(location):
-    # Geocoding is intentionally bypassed; use fixed coordinates for now.
-    current_weather = get_current_weather(DEFAULT_LAT, DEFAULT_LON)
     normalized_location = location or DEFAULT_LOCATION_NAME
+    current_weather = find_current_weather(normalized_location)
+    if not current_weather:
+        return None, None
 
     return normalized_location, current_weather
 
@@ -68,7 +67,7 @@ def get_outdoor_current():
         return weather_fetch_error_response(error)
 
     if not normalized_location:
-        return jsonify({"error": f"Could not find coordinates for {location}"}), 400
+        return jsonify({"error": f"Could not find weather for {location}"}), 400
 
     return jsonify({
         "location": normalized_location,
@@ -95,7 +94,7 @@ def create_reading_response():
         return weather_fetch_error_response(error)
 
     if not normalized_location:
-        return jsonify({"error": f"Could not find coordinates for {location}"}), 400
+        return jsonify({"error": f"Could not find weather for {location}"}), 400
 
     reading = Reading(
         location=normalized_location,
