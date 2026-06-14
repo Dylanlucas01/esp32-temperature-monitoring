@@ -1,12 +1,18 @@
 import requests
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, current_app, jsonify, request
 
 from extensions import db
 from models import Reading
-from services.openweather import geocode_location, get_current_weather
+from services.openweather import (
+    OpenWeatherConfigError,
+    get_current_weather,
+)
 
 
 readings_bp = Blueprint("readings", __name__)
+DEFAULT_LOCATION_NAME = "Redwood City, CA, US"
+DEFAULT_LAT = 37.49
+DEFAULT_LON = -122.23
 
 
 def ensure_schema():
@@ -26,38 +32,40 @@ def serialize_reading(reading):
 
 
 def fetch_current_weather_for_location(location):
-    geocoded_location = geocode_location(location)
-    if not geocoded_location:
-        return None, None
-
-    current_weather = get_current_weather(
-        geocoded_location["lat"],
-        geocoded_location["lon"],
-    )
-
-    location_parts = [
-        geocoded_location["name"],
-        geocoded_location.get("state"),
-        geocoded_location.get("country"),
-    ]
-    normalized_location = ", ".join(part for part in location_parts if part)
+    # Geocoding is intentionally bypassed; use fixed coordinates for now.
+    current_weather = get_current_weather(DEFAULT_LAT, DEFAULT_LON)
+    normalized_location = location or DEFAULT_LOCATION_NAME
 
     return normalized_location, current_weather
 
 
+def weather_config_error_response(error):
+    current_app.logger.error("OpenWeather configuration error: %s", error)
+    return jsonify({
+        "error": "Weather service is not configured",
+    }), 503
+
+
+def weather_fetch_error_response(error):
+    current_app.logger.warning(
+        "OpenWeather request failed: %s",
+        error.__class__.__name__,
+    )
+    return jsonify({
+        "error": "Could not fetch current weather",
+    }), 502
+
+
 @readings_bp.get("/api/outdoor/current")
 def get_outdoor_current():
-    location = request.args.get("location", "Redwood City")
+    location = request.args.get("location", DEFAULT_LOCATION_NAME)
 
     try:
         normalized_location, current_weather = fetch_current_weather_for_location(location)
-    except RuntimeError as error:
-        return jsonify({"error": str(error)}), 500
+    except OpenWeatherConfigError as error:
+        return weather_config_error_response(error)
     except requests.RequestException as error:
-        return jsonify({
-            "error": "Could not fetch current weather",
-            "details": str(error),
-        }), 502
+        return weather_fetch_error_response(error)
 
     if not normalized_location:
         return jsonify({"error": f"Could not find coordinates for {location}"}), 400
@@ -81,13 +89,10 @@ def create_reading_response():
 
     try:
         normalized_location, current_weather = fetch_current_weather_for_location(location)
-    except RuntimeError as error:
-        return jsonify({"error": str(error)}), 500
+    except OpenWeatherConfigError as error:
+        return weather_config_error_response(error)
     except requests.RequestException as error:
-        return jsonify({
-            "error": "Could not fetch current weather",
-            "details": str(error),
-        }), 502
+        return weather_fetch_error_response(error)
 
     if not normalized_location:
         return jsonify({"error": f"Could not find coordinates for {location}"}), 400

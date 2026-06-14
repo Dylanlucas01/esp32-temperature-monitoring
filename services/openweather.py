@@ -6,10 +6,14 @@ GEOCODING_URL = "https://api.openweathermap.org/geo/1.0/direct"
 CURRENT_URL = "https://api.openweathermap.org/data/2.5/weather"
 
 
+class OpenWeatherConfigError(RuntimeError):
+    pass
+
+
 def get_openweather_api_key():
     api_key = current_app.config.get("OPENWEATHER_API_KEY")
     if not api_key:
-        raise RuntimeError("OPENWEATHER_API_KEY is not configured")
+        raise OpenWeatherConfigError("OPENWEATHER_API_KEY is not configured")
 
     return api_key
 
