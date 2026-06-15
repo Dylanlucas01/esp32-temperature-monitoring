@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 from flask import Flask, send_file
@@ -18,6 +19,10 @@ def create_app():
     def home():
         return send_file(Path(__file__).with_name("dashboard.html"))
 
+    @app.route("/readings")
+    def readings():
+        return send_file(Path(__file__).with_name("readings.html"))
+
     @app.route("/health")
     def health():
         return {"status": "ok"}
@@ -28,4 +33,4 @@ def create_app():
 app = create_app()
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, port=int(os.environ.get("PORT", "5000")))
