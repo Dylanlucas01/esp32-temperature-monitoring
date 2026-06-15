@@ -31,6 +31,16 @@ def serialize_reading(reading):
     }
 
 
+READING_COLUMNS = {
+    "id": Reading.id,
+    "recorded_at": Reading.recorded_at,
+    "inside_temp_f": Reading.inside_temp_f,
+    "inside_humidity": Reading.inside_humidity,
+    "outside_temp_f": Reading.outside_temp_f,
+    "outside_humidity": Reading.outside_humidity,
+}
+
+
 def fetch_current_weather_for_location(location):
     normalized_location = location or DEFAULT_LOCATION_NAME
     current_weather = find_current_weather(normalized_location)
@@ -115,6 +125,48 @@ def get_reading_history():
 
     return jsonify({
         "hours": hours,
+        "readings": [serialize_reading(reading) for reading in readings],
+    })
+
+
+@readings_bp.get("/api/readings")
+def get_readings():
+    ensure_schema()
+
+    try:
+        page = int(request.args.get("page", 1))
+        per_page = int(request.args.get("per_page", 10))
+    except ValueError:
+        return jsonify({"error": "page and per_page must be numbers"}), 400
+
+    sort_by = request.args.get("sort_by", "recorded_at")
+    sort_dir = request.args.get("sort_dir", "desc")
+
+    if sort_by not in READING_COLUMNS:
+        return jsonify({"error": "sort_by is not supported"}), 400
+
+    if sort_dir not in {"asc", "desc"}:
+        return jsonify({"error": "sort_dir must be asc or desc"}), 400
+
+    per_page = max(1, min(per_page, 100))
+    page = max(1, page)
+    sort_column = READING_COLUMNS[sort_by]
+    query = Reading.query.order_by(sort_column.desc() if sort_dir == "desc" else sort_column.asc())
+    total = query.count()
+    pages = max(1, (total + per_page - 1) // per_page)
+    page = min(page, pages)
+    readings = (
+        query
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+        .all()
+    )
+
+    return jsonify({
+        "page": page,
+        "per_page": per_page,
+        "pages": pages,
+        "total": total,
         "readings": [serialize_reading(reading) for reading in readings],
     })
 
