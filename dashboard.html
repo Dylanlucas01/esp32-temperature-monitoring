@@ -13,6 +13,7 @@
         <div>
           <p class="label">Location</p>
           <h1 id="location">Loading...</h1>
+          <span class="status" id="status">Loading latest reading...</span>
         </div>
         <div class="time">
           <p class="label">Local Time</p>
@@ -47,7 +48,26 @@
         </article>
       </section>
 
-      <footer class="status" id="status">Loading latest reading...</footer>
+      <section class="chart-panel" aria-label="Indoor and outdoor temperature over the past 12 hours">
+        <div class="chart-header">
+          <div>
+            <p class="label">Temperature History</p>
+            <h2 id="chart-title">Past 12 hours</h2>
+          </div>
+          <div class="chart-tools">
+            <div class="legend" aria-label="Chart legend">
+              <span><i class="legend-dot indoor"></i>Indoor</span>
+              <span><i class="legend-dot outdoor"></i>Outdoor</span>
+            </div>
+            <button class="chart-reset is-hidden" id="chart-reset" type="button">Reset</button>
+          </div>
+        </div>
+        <div class="chart-readout" id="chart-readout"></div>
+        <div class="chart-wrap">
+          <canvas id="temperature-chart"></canvas>
+          <p class="chart-empty" id="chart-empty">Loading chart...</p>
+        </div>
+      </section>
     </section>
   </main>
 
