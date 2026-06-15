@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ESP32 Weather Station</title>
+  <link rel="stylesheet" href="/static/dashboard.css">
+</head>
+<body>
+  <main>
+    <section class="dashboard" aria-label="Weather dashboard">
+      <header class="top">
+        <div>
+          <p class="label">Location</p>
+          <h1 id="location">Loading...</h1>
+        </div>
+        <div class="time">
+          <p class="label">Local Time</p>
+          <strong id="time">--:--</strong>
+          <span id="date">Loading date...</span>
+        </div>
+      </header>
+
+      <section class="grid" aria-label="Current readings">
+        <article class="metric warm">
+          <div>
+            <p class="label">Outdoor Temp</p>
+            <strong id="outdoor-temp">--</strong>
+          </div>
+          <small id="outdoor-note">Waiting for weather data</small>
+        </article>
+
+        <article class="metric accent">
+          <div>
+            <p class="label">Indoor Temp</p>
+            <strong id="indoor-temp">--</strong>
+          </div>
+          <small>ESP32 sensor reading</small>
+        </article>
+
+        <article class="metric">
+          <div>
+            <p class="label">Indoor Humidity</p>
+            <strong id="indoor-humidity">--</strong>
+          </div>
+          <small>ESP32 sensor reading</small>
+        </article>
+      </section>
+
+      <footer class="status" id="status">Loading latest reading...</footer>
+    </section>
+  </main>
+
+  <script src="/static/dashboard.js"></script>
+</body>
+</html>

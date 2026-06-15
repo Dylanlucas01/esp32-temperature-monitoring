@@ -1,4 +1,6 @@
-from flask import Flask
+from pathlib import Path
+
+from flask import Flask, send_file
 
 from config import Config
 from extensions import db
@@ -14,7 +16,7 @@ def create_app():
 
     @app.route("/")
     def home():
-        return "ESP32 Weather Station Running"
+        return send_file(Path(__file__).with_name("dashboard.html"))
 
     @app.route("/health")
     def health():
