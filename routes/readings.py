@@ -76,6 +76,23 @@ def get_outdoor_current():
     })
 
 
+@readings_bp.get("/api/readings/latest")
+def get_latest_reading():
+    ensure_schema()
+    reading = Reading.query.order_by(Reading.recorded_at.desc()).first()
+
+    if not reading:
+        return jsonify({
+            "location": DEFAULT_LOCATION_NAME,
+            "reading": None,
+        })
+
+    return jsonify({
+        "location": reading.location,
+        "reading": serialize_reading(reading),
+    })
+
+
 def create_reading_response():
     data = request.get_json(silent=True) or {}
     location = data.get("location")
