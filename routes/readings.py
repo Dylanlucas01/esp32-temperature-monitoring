@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta, timezone
+
 import requests
 from flask import Blueprint, current_app, jsonify, request
 
@@ -90,6 +92,30 @@ def get_latest_reading():
     return jsonify({
         "location": reading.location,
         "reading": serialize_reading(reading),
+    })
+
+
+@readings_bp.get("/api/readings/history")
+def get_reading_history():
+    ensure_schema()
+
+    try:
+        hours = int(request.args.get("hours", 12))
+    except ValueError:
+        return jsonify({"error": "hours must be a number"}), 400
+
+    hours = max(1, min(hours, 168))
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+    readings = (
+        Reading.query
+        .filter(Reading.recorded_at >= cutoff)
+        .order_by(Reading.recorded_at.asc())
+        .all()
+    )
+
+    return jsonify({
+        "hours": hours,
+        "readings": [serialize_reading(reading) for reading in readings],
     })
 
 
