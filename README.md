@@ -1,0 +1,252 @@
+# ESP32 Temperature Monitoring
+
+A small Flask web app for collecting indoor temperature and humidity readings from an ESP32, pairing each reading with current outdoor weather from OpenWeather, and displaying the results in a browser dashboard.
+
+## Features
+
+- Dashboard at `/` with latest indoor/outdoor readings and a 12-hour temperature chart
+- Readings table at `/readings` with pagination and sortable columns
+- JSON API for posting ESP32 sensor readings
+- OpenWeather integration for outdoor temperature and humidity
+- SQL database storage with local SQLite by default and PostgreSQL support through `DATABASE_URL`
+- Backend logging for request flow, weather lookups, validation failures, and database writes
+- Python test suite for routes, services, and configuration helpers
+
+## Documentation
+
+Additional project documentation can be found in the [`docs`](docs) directory:
+
+- [Sequence Diagram](docs/sequence-diagram.md)
+- [Database Design](docs/database-design.md)
+- [Firmware Architecture](docs/firmware-architecture.md)
+- [Engineering Decisions](docs/tradeoffs-and-decisions.md)
+- [Future Improvements](docs/future-improvements.md)
+
+## Project Structure
+
+- `server.py` creates the Flask app, registers blueprints, and serves the static pages.
+- `routes/sensor_data.py` defines the sensor and readings API routes.
+- `services/reading_service.py` handles reading serialization, database queries, and reading creation.
+- `services/openweather.py` handles OpenWeather API calls.
+- `models.py` defines the SQLAlchemy `Reading` model.
+- `tests/unit/` contains direct helper and service tests.
+- `tests/integration/` contains Flask route tests using a temporary database.
+- `Makefile` wraps common local development commands.
+
+## Local Setup
+
+Create and activate a virtual environment:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+Install dependencies:
+
+```bash
+make install
+```
+
+Create a `.env` file:
+
+```bash
+OPENWEATHER_API_KEY=your_openweather_api_key
+```
+
+Run the app:
+
+```bash
+make run
+```
+
+Open <http://localhost:5000>.
+
+By default, the app uses SQLite at `/tmp/esp32_temperature.db`. The database tables are created automatically the first time an API route needs them.
+
+You can still run the commands directly if needed:
+
+```bash
+pip install -r requirements.txt
+python server.py
+```
+
+## Development Commands
+
+The Makefile defaults to `.venv/bin/python` and `.venv/bin/pip`.
+
+| Command | Purpose |
+| --- | --- |
+| `make help` | Show available Makefile targets. |
+| `make install` | Install Python dependencies from `requirements.txt`. |
+| `make run` | Start the Flask app on port `5000`. |
+| `make run PORT=8000` | Start the app on a custom port. |
+| `make test` | Run the pytest suite. |
+| `make test-unit` | Run only unit tests. |
+| `make test-integration` | Run only integration tests. |
+| `make check` | Compile Python files and run tests. |
+| `make clean` | Remove Python cache and pytest cache directories. |
+
+## Environment Variables
+
+| Variable | Required | Description |
+| --- | --- | --- |
+| `OPENWEATHER_API_KEY` | Yes | API key used to fetch current outdoor weather. |
+| `DATABASE_URL` | No | Database connection string. Defaults to local SQLite. `postgres://` URLs are automatically converted for `psycopg`. |
+| `LOG_LEVEL` | No | Python logging level. Defaults to `INFO`. Use `DEBUG` for schema-check logs or `WARNING` to reduce normal request logs. |
+| `PORT` | No | Port used by `server.py`. Defaults to `5000`. |
+
+## Testing
+
+Run the backend tests with:
+
+```bash
+make test
+```
+
+The tests are split by scope:
+
+- unit test covers direct helpers and service behavior with mocked dependencies.
+- integration test covers Flask routes, SQLAlchemy, and the reading service working together with a temporary SQLite database.
+
+OpenWeather responses are mocked, so tests do not require network access or a real OpenWeather API key.
+
+You can run each group separately:
+
+```bash
+make test-unit
+make test-integration
+```
+
+For a fuller local verification pass, run:
+
+```bash
+make check
+```
+
+## API Endpoints
+
+### Health Check
+
+```http
+GET /health
+```
+
+Returns:
+
+```json
+{ "status": "ok" }
+```
+
+### Current Outdoor Weather
+
+```http
+GET /api/outdoor/current?location=Redwood%20City
+```
+
+Returns current outdoor temperature and humidity from OpenWeather.
+
+### Latest Reading
+
+```http
+GET /api/readings/latest
+```
+
+Returns the latest saved indoor/outdoor reading, or `reading: null` if no readings exist.
+
+### Reading History
+
+```http
+GET /api/readings/history?hours=12
+```
+
+Returns readings from the last `1` to `168` hours. The default is `12`.
+
+### Paginated Readings
+
+```http
+GET /api/readings?page=1&per_page=10&sort_by=recorded_at&sort_dir=desc
+```
+
+Supported `sort_by` values:
+
+- `id`
+- `recorded_at`
+- `inside_temp_f`
+- `inside_humidity`
+- `outside_temp_f`
+- `outside_humidity`
+
+### Create a Reading
+
+```http
+POST /api/indoor
+Content-Type: application/json
+
+{
+  "location": "Redwood City",
+  "temperature": 72.4,
+  "humidity": 45.8
+}
+```
+
+## ESP32 Request Example
+
+Your ESP32 should send JSON like this:
+
+```json
+{
+  "location": "Redwood City",
+  "temperature": 72.4,
+  "humidity": 45.8
+}
+```
+
+The API expects:
+
+- `location`: city or location name for OpenWeather lookup
+- `temperature`: indoor temperature in Fahrenheit
+- `humidity`: indoor relative humidity percentage
+
+Successful requests return the saved reading with server-generated `id`, `recorded_at`, and outdoor weather values.
+
+Example success response:
+
+```json
+{
+  "id": 1,
+  "recorded_at": "2026-06-16T10:30:00+00:00",
+  "location": "Redwood City",
+  "outside_temp_f": 68.2,
+  "outside_humidity": 62,
+  "inside_temp_f": 72.4,
+  "inside_humidity": 45.8
+}
+```
+
+The reading is saved only after the server successfully resolves the location and fetches current outdoor weather.
+
+## Deployment
+
+This project includes a `Procfile` for platforms that run Gunicorn:
+
+```bash
+web: gunicorn server:app
+```
+
+For production, set:
+
+```bash
+OPENWEATHER_API_KEY=your_openweather_api_key
+DATABASE_URL=your_database_url
+LOG_LEVEL=INFO
+```
+
+## Notes
+
+- The default dashboard location is `Redwood City`.
+- Missing `location` or an unknown weather location returns `400`.
+- OpenWeather configuration errors return `503`.
+- OpenWeather request failures return `502`.
+- Logs intentionally avoid printing API keys and database credentials.
+- The local SQLite database path is under `/tmp`, so local data may be temporary depending on your system cleanup behavior.
