@@ -40,8 +40,8 @@ def create_app():
     def home():
         return send_file(Path(__file__).with_name("dashboard.html"))
 
-    @app.route("/readings")
-    def readings():
+    @app.route("/weather-history")
+    def weather_history():
         return send_file(Path(__file__).with_name("readings.html"))
 
     @app.route("/health")
@@ -54,4 +54,8 @@ def create_app():
 app = create_app()
 
 if __name__ == "__main__":
-    app.run(debug=True, port=int(os.environ.get("PORT", "5000")))
+    app.run(
+        debug=True,
+        host="0.0.0.0",
+        port=int(os.environ.get("PORT", "5001")),
+    )

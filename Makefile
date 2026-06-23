@@ -2,7 +2,7 @@
 
 PYTHON ?= .venv/bin/python
 PIP ?= .venv/bin/pip
-PORT ?= 5000
+PORT ?= 5001
 
 help:
 	@echo "Available targets:"
