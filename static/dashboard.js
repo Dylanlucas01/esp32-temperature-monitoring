@@ -17,6 +17,7 @@ const setText = (id, value) => {
 
 const formatTemp = (value) => Number.isFinite(value) ? `${value}°F` : "--";
 const formatPercent = (value) => Number.isFinite(value) ? `${value}%` : "--";
+const formatOutdoorNote = (location) => location ? `Live outdoor weather for ${location}` : "Live outdoor weather";
 const chartState = {
   readings: [],
   hoverReading: null,
@@ -26,6 +27,10 @@ const chartState = {
   dragCurrentX: null,
   zoomStartMs: null,
   zoomEndMs: null
+};
+const locationState = {
+  activeLocation: null,
+  locations: []
 };
 
 function updateClock() {
@@ -40,6 +45,182 @@ async function fetchJson(url) {
     throw new Error(`Request failed: ${response.status}`);
   }
   return response.json();
+}
+
+async function sendJson(url, method, body) {
+  const options = {
+    method,
+    headers: {
+      "Content-Type": "application/json"
+    }
+  };
+
+  if (body !== undefined) {
+    options.body = JSON.stringify(body);
+  }
+
+  const response = await fetch(url, options);
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.error || `Request failed: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+function renderLocationSelect() {
+  const select = document.getElementById("location-select");
+  const removeSelect = document.getElementById("remove-location-select");
+  const removeToggle = document.getElementById("remove-location-toggle");
+  const removableLocations = locationState.locations.filter((location) => !location.is_protected);
+  select.replaceChildren();
+  removeSelect.replaceChildren();
+
+  if (locationState.locations.length === 0) {
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = "No saved spots yet";
+    select.append(option);
+    removeSelect.append(option.cloneNode(true));
+    select.disabled = true;
+    removeSelect.disabled = true;
+    removeToggle.disabled = true;
+    return;
+  }
+
+  locationState.locations.forEach((location) => {
+    const option = document.createElement("option");
+    option.value = location.id;
+    option.textContent = `${location.nickname} - ${location.location}`;
+    select.append(option);
+  });
+
+  removableLocations.forEach((location) => {
+    const option = document.createElement("option");
+    option.value = location.id;
+    option.textContent = `${location.nickname} - ${location.location}`;
+    removeSelect.append(option);
+  });
+
+  select.disabled = false;
+  removeSelect.disabled = removableLocations.length === 0;
+  removeToggle.disabled = removableLocations.length === 0;
+
+  if (locationState.activeLocation) {
+    select.value = String(locationState.activeLocation.id);
+  }
+
+  if (removableLocations.length === 0) {
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = "No removable spots";
+    removeSelect.append(option);
+  }
+}
+
+function setLocationFormVisible(isVisible) {
+  const panel = document.getElementById("location-panel");
+  const removePanel = document.getElementById("remove-location-panel");
+  const form = document.getElementById("location-form");
+  const toggle = document.getElementById("add-location-toggle");
+  const removeToggle = document.getElementById("remove-location-toggle");
+
+  panel.classList.toggle("is-hidden", !isVisible);
+  removePanel.classList.add("is-hidden");
+  toggle.hidden = isVisible;
+  removeToggle.hidden = isVisible;
+
+  if (isVisible) {
+    document.getElementById("location-nickname").focus();
+  } else {
+    form.reset();
+  }
+}
+
+function setRemoveLocationFormVisible(isVisible) {
+  const panel = document.getElementById("location-panel");
+  const removePanel = document.getElementById("remove-location-panel");
+  const toggle = document.getElementById("add-location-toggle");
+  const removeToggle = document.getElementById("remove-location-toggle");
+
+  removePanel.classList.toggle("is-hidden", !isVisible);
+  panel.classList.add("is-hidden");
+  toggle.hidden = isVisible;
+  removeToggle.hidden = isVisible;
+
+  if (isVisible) {
+    document.getElementById("remove-location-select").focus();
+  }
+}
+
+async function loadLocations() {
+  const data = await fetchJson("/api/locations");
+  locationState.activeLocation = data.active_location;
+  locationState.locations = data.locations || [];
+  renderLocationSelect();
+}
+
+async function activateLocation(locationId) {
+  if (!locationId) {
+    return;
+  }
+
+  const location = await sendJson("/api/locations/active", "PUT", { location_id: locationId });
+  locationState.activeLocation = location;
+  locationState.locations = locationState.locations.map((item) => ({
+    ...item,
+    is_active: item.id === location.id
+  }));
+  renderLocationSelect();
+  if (location.outdoor_current) {
+    setText("outdoor-temp", formatTemp(location.outdoor_current.temperature));
+    setText("outdoor-note", formatOutdoorNote(location.outdoor_current.location));
+  }
+  loadDashboard();
+}
+
+async function saveLocation(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const nickname = form.nickname.value.trim();
+  const location = form.location.value.trim();
+
+  if (!nickname || !location) {
+    setText("status", "Enter a nickname and location.");
+    return;
+  }
+
+  try {
+    const savedLocation = await sendJson("/api/locations", "POST", { nickname, location });
+    form.reset();
+    setLocationFormVisible(false);
+    locationState.activeLocation = savedLocation;
+    await loadLocations();
+    loadDashboard();
+  } catch (error) {
+    setText("status", error.message);
+  }
+}
+
+async function removeLocation(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const locationId = form.location_id.value;
+
+  if (!locationId) {
+    setText("status", "Choose a spot to remove.");
+    return;
+  }
+
+  try {
+    await sendJson(`/api/locations/${encodeURIComponent(locationId)}`, "DELETE");
+    setRemoveLocationFormVisible(false);
+    await loadLocations();
+    loadDashboard();
+  } catch (error) {
+    setText("status", error.message);
+  }
 }
 
 function getChartPoints(readings, key) {
@@ -85,8 +266,8 @@ function getChartReadings() {
   return chartState.readings
     .map((reading) => {
       const date = new Date(reading.recorded_at);
-      const indoor = Number(reading.inside_temp_f);
-      const outdoor = Number(reading.outside_temp_f);
+      const indoor = Number(reading.inside_temperature);
+      const outdoor = Number(reading.outside_temperature);
 
       return {
         date,
@@ -418,14 +599,15 @@ async function loadDashboard() {
   let location = DEFAULT_LOCATION;
 
   try {
+    await loadLocations();
     const latest = await fetchJson("/api/readings/latest");
-    location = latest.location || DEFAULT_LOCATION;
-    setText("location", location);
+    const activeLocation = latest.active_location || locationState.activeLocation;
+    location = activeLocation ? activeLocation.location : latest.location || DEFAULT_LOCATION;
 
     if (latest.reading) {
-      setText("indoor-temp", formatTemp(latest.reading.inside_temp_f));
+      setText("indoor-temp", formatTemp(latest.reading.inside_temperature));
       setText("indoor-humidity", formatPercent(latest.reading.inside_humidity));
-      setText("outdoor-temp", formatTemp(latest.reading.outside_temp_f));
+      setText("outdoor-temp", formatTemp(latest.reading.outside_temperature));
       setText("outdoor-note", "From latest saved reading");
       setText("status", `Latest sensor update: ${new Date(latest.reading.recorded_at).toLocaleString()}`);
     } else {
@@ -434,15 +616,13 @@ async function loadDashboard() {
       setText("status", "No indoor readings saved yet.");
     }
   } catch (error) {
-    setText("location", location);
     setText("status", "Could not load saved readings.");
   }
 
   try {
     const weather = await fetchJson(`/api/outdoor/current?location=${encodeURIComponent(location)}`);
-    setText("location", weather.location || location);
     setText("outdoor-temp", formatTemp(weather.temperature));
-    setText("outdoor-note", "Live outdoor weather");
+    setText("outdoor-note", formatOutdoorNote(weather.location));
   } catch (error) {
     setText("outdoor-note", "Outdoor weather unavailable");
   }
@@ -456,6 +636,13 @@ loadDashboard();
 setInterval(loadDashboard, 60000);
 window.addEventListener("resize", drawTemperatureChart);
 document.getElementById("chart-reset").addEventListener("click", resetChartZoom);
+document.getElementById("location-select").addEventListener("change", (event) => activateLocation(event.target.value));
+document.getElementById("add-location-toggle").addEventListener("click", () => setLocationFormVisible(true));
+document.getElementById("remove-location-toggle").addEventListener("click", () => setRemoveLocationFormVisible(true));
+document.getElementById("cancel-location").addEventListener("click", () => setLocationFormVisible(false));
+document.getElementById("cancel-remove-location").addEventListener("click", () => setRemoveLocationFormVisible(false));
+document.getElementById("location-form").addEventListener("submit", saveLocation);
+document.getElementById("remove-location-form").addEventListener("submit", removeLocation);
 document.getElementById("temperature-chart").addEventListener("pointerdown", handleChartPointerDown);
 document.getElementById("temperature-chart").addEventListener("pointermove", handleChartPointerMove);
 document.getElementById("temperature-chart").addEventListener("pointerup", handleChartPointerUp);

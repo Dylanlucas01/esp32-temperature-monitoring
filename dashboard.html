@@ -10,9 +10,15 @@
   <main>
     <section class="dashboard" aria-label="Weather dashboard">
       <header class="top">
-        <div>
-          <p class="label">Location</p>
-          <h1 id="location">Loading...</h1>
+        <div class="location-heading">
+          <p class="label location-label">Selected Location</p>
+          <select class="location-title-select" id="location-select" aria-label="Saved spot">
+            <option value="">Loading locations...</option>
+          </select>
+          <div class="spot-actions">
+            <button class="secondary-button small-button" id="add-location-toggle" type="button">Add new spot</button>
+            <button class="secondary-button small-button" id="remove-location-toggle" type="button">Remove spot</button>
+          </div>
           <span class="status" id="status">Loading latest reading...</span>
         </div>
         <div class="time">
@@ -21,6 +27,38 @@
           <span id="date">Loading date...</span>
         </div>
       </header>
+
+      <section class="location-panel is-hidden" id="location-panel" aria-label="Add location">
+        <form class="location-form" id="location-form">
+          <div class="field-group">
+            <label for="location-nickname">Nickname</label>
+            <input id="location-nickname" name="nickname" placeholder="Desk" autocomplete="off">
+          </div>
+          <div class="field-group">
+            <label for="location-value">Location</label>
+            <input id="location-value" name="location" placeholder="Redwood City" autocomplete="off">
+          </div>
+          <div class="location-actions">
+            <button class="secondary-button" id="cancel-location" type="button">Cancel</button>
+            <button class="primary-button" type="submit">Save spot</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="location-panel is-hidden" id="remove-location-panel" aria-label="Remove location">
+        <form class="remove-location-form" id="remove-location-form">
+          <div class="field-group">
+            <label for="remove-location-select">Spot to delete</label>
+            <select id="remove-location-select" name="location_id">
+              <option value="">Loading locations...</option>
+            </select>
+          </div>
+          <div class="location-actions">
+            <button class="secondary-button" id="cancel-remove-location" type="button">Cancel</button>
+            <button class="danger-button" type="submit">Delete spot</button>
+          </div>
+        </form>
+      </section>
 
       <section class="grid" aria-label="Current readings">
         <article class="metric warm">
@@ -67,7 +105,7 @@
           <canvas id="temperature-chart"></canvas>
           <p class="chart-empty" id="chart-empty">Loading chart...</p>
         </div>
-        <a class="history-link" href="/readings">View all readings</a>
+        <a class="history-link" href="/weather-history">View all readings</a>
       </section>
     </section>
   </main>

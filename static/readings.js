@@ -11,7 +11,8 @@ const readingsState = {
   pageCount: 1,
   total: 0,
   sortBy: "recorded_at",
-  sortDir: "desc"
+  sortDir: "desc",
+  locationId: ""
 };
 
 async function fetchJson(url) {
@@ -55,7 +56,7 @@ function formatReadingTime(reading) {
 function setReadingsTableMessage(message) {
   document.getElementById("readings-table-body").innerHTML = `
     <tr>
-      <td colspan="6" class="empty-cell">${message}</td>
+      <td colspan="7" class="empty-cell">${message}</td>
     </tr>
   `;
   setText("readings-count", "0 readings");
@@ -89,9 +90,10 @@ function renderReadingsTable(readings) {
     <tr>
       <td>${reading.id}</td>
       <td>${formatReadingTime(reading)}</td>
-      <td>${formatTemp(reading.inside_temp_f)}</td>
+      <td>${reading.location_nickname || reading.location || "--"}</td>
+      <td>${formatTemp(reading.inside_temperature)}</td>
       <td>${formatPercent(reading.inside_humidity)}</td>
-      <td>${formatTemp(reading.outside_temp_f)}</td>
+      <td>${formatTemp(reading.outside_temperature)}</td>
       <td>${formatPercent(reading.outside_humidity)}</td>
     </tr>
   `).join("");
@@ -209,7 +211,39 @@ function getReadingsUrl(page) {
     sort_dir: readingsState.sortDir
   });
 
+  if (readingsState.locationId) {
+    params.set("location_id", readingsState.locationId);
+  }
+
   return `/api/readings?${params.toString()}`;
+}
+
+function renderLocationFilter(locations) {
+  const select = document.getElementById("readings-location-select");
+  select.replaceChildren();
+
+  const allOption = document.createElement("option");
+  allOption.value = "";
+  allOption.textContent = "All spots";
+  select.append(allOption);
+
+  locations.forEach((location) => {
+    const option = document.createElement("option");
+    option.value = location.id;
+    option.textContent = `${location.nickname} - ${location.location}`;
+    select.append(option);
+  });
+
+  select.value = readingsState.locationId;
+}
+
+async function loadLocationFilter() {
+  try {
+    const data = await fetchJson("/api/locations");
+    renderLocationFilter(data.locations || []);
+  } catch (error) {
+    document.getElementById("readings-location-select").disabled = true;
+  }
 }
 
 function setSort(sortBy) {
@@ -228,15 +262,21 @@ async function loadReadings(page = readingsState.currentPage) {
     const data = await fetchJson(getReadingsUrl(page));
     updatePagination(data);
     renderReadingsTable(normalizeReadings(data.readings || []));
-    setText("readings-status", "Showing all saved readings.");
+    setText("readings-status", readingsState.locationId ? "Showing readings for the selected spot." : "Showing all saved readings.");
   } catch (error) {
     setReadingsTableMessage("Could not load readings.");
     setText("readings-status", "Could not load saved readings.");
   }
 }
 
+document.getElementById("readings-location-select").addEventListener("change", (event) => {
+  readingsState.locationId = event.target.value;
+  loadReadings(1);
+});
+
 document.querySelectorAll(".sort-button").forEach((button) => {
   button.addEventListener("click", () => setSort(button.dataset.sortBy));
 });
+loadLocationFilter();
 loadReadings();
 setInterval(loadReadings, 60000);
