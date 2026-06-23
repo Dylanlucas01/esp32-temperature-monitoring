@@ -53,7 +53,7 @@ This project demonstrates the integration of embedded systems, backend services,
 
 1. The ESP32 reads temperature and humidity data from the DHT11 sensor.
 2. Sensor readings are sent to the Flask API.
-3. The backend retrieves outdoor weather information for the requested location.
+3. The backend retrieves outdoor weather information for the active saved location.
 4. The backend stores the indoor reading together with the outdoor weather values in the configured SQL database.
 5. The saved reading is returned to the ESP32 and can be displayed on the LCD.
 6. Users can access stored data through the web application.

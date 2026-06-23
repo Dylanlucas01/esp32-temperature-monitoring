@@ -5,7 +5,8 @@ A small Flask web app for collecting indoor temperature and humidity readings fr
 ## Features
 
 - Dashboard at `/` with latest indoor/outdoor readings and a 12-hour temperature chart
-- Readings table at `/readings` with pagination and sortable columns
+- Saved locations with an active spot selector for portable ESP32 use
+- Weather history table at `/weather-history` with pagination and sortable columns
 - JSON API for posting ESP32 sensor readings
 - OpenWeather integration for outdoor temperature and humidity
 - SQL database storage with local SQLite by default and PostgreSQL support through `DATABASE_URL`
@@ -28,7 +29,7 @@ Additional project documentation can be found in the [`docs`](docs) directory:
 - `routes/sensor_data.py` defines the sensor and readings API routes.
 - `services/reading_service.py` handles reading serialization, database queries, and reading creation.
 - `services/openweather.py` handles OpenWeather API calls.
-- `models.py` defines the SQLAlchemy `Reading` model.
+- `models.py` defines the SQLAlchemy `Location` and `Reading` models.
 - `tests/unit/` contains direct helper and service tests.
 - `tests/integration/` contains Flask route tests using a temporary database.
 - `Makefile` wraps common local development commands.
@@ -144,7 +145,38 @@ Returns:
 GET /api/outdoor/current?location=Redwood%20City
 ```
 
-Returns current outdoor temperature and humidity from OpenWeather.
+Returns current outdoor temperature and humidity from OpenWeather. If `location` is omitted, the server uses the active saved location.
+
+### Locations
+
+```http
+GET /api/locations
+```
+
+Returns saved locations and the active location used for future ESP32 readings.
+
+```http
+POST /api/locations
+Content-Type: application/json
+
+{
+  "nickname": "Desk",
+  "location": "Redwood City"
+}
+```
+
+Creates a saved location and makes it active.
+
+```http
+PUT /api/locations/active
+Content-Type: application/json
+
+{
+  "location_id": 1
+}
+```
+
+Makes an existing location active.
 
 ### Latest Reading
 
@@ -172,9 +204,9 @@ Supported `sort_by` values:
 
 - `id`
 - `recorded_at`
-- `inside_temp_f`
+- `inside_temperature`
 - `inside_humidity`
-- `outside_temp_f`
+- `outside_temperature`
 - `outside_humidity`
 
 ### Create a Reading
@@ -184,7 +216,6 @@ POST /api/indoor
 Content-Type: application/json
 
 {
-  "location": "Redwood City",
   "temperature": 72.4,
   "humidity": 45.8
 }
@@ -196,7 +227,6 @@ Your ESP32 should send JSON like this:
 
 ```json
 {
-  "location": "Redwood City",
   "temperature": 72.4,
   "humidity": 45.8
 }
@@ -204,27 +234,23 @@ Your ESP32 should send JSON like this:
 
 The API expects:
 
-- `location`: city or location name for OpenWeather lookup
 - `temperature`: indoor temperature in Fahrenheit
 - `humidity`: indoor relative humidity percentage
 
-Successful requests return the saved reading with server-generated `id`, `recorded_at`, and outdoor weather values.
+The server uses the active saved location from the web app for OpenWeather lookup. Successful requests save the full reading and return a compact response for the ESP32 LCD. The ESP32 can update the LCD from this POST response instead of making a separate display refresh GET.
 
 Example success response:
 
 ```json
 {
-  "id": 1,
-  "recorded_at": "2026-06-16T10:30:00+00:00",
+  "nickname": "Home",
   "location": "Redwood City",
-  "outside_temp_f": 68.2,
-  "outside_humidity": 62,
-  "inside_temp_f": 72.4,
-  "inside_humidity": 45.8
+  "outside_temperature": 68.2,
+  "outside_humidity": 62
 }
 ```
 
-The reading is saved only after the server successfully resolves the location and fetches current outdoor weather.
+The reading is saved only after the server successfully resolves the active location and fetches current outdoor weather.
 
 ## Deployment
 
@@ -244,8 +270,8 @@ LOG_LEVEL=INFO
 
 ## Notes
 
-- The default dashboard location is `Redwood City`.
-- Missing `location` or an unknown weather location returns `400`.
+- The default saved location is `Home`, using `Redwood City`.
+- Unknown active weather locations return `400`.
 - OpenWeather configuration errors return `503`.
 - OpenWeather request failures return `502`.
 - Logs intentionally avoid printing API keys and database credentials.

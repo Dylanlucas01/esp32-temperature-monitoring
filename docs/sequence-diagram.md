@@ -12,13 +12,15 @@ sequenceDiagram
 
     ESP32->>ESP32: Read DHT11
     ESP32->>Routes: POST /api/indoor
-    ESP32->>Routes: { location, temperature, humidity }
-    Routes->>Routes: Validate location is present
+    ESP32->>Routes: { temperature, humidity }
+    Routes->>Routes: Parse indoor sensor values
     Routes->>Service: Create reading
-    Service->>Weather: GET current weather for location
+    Service->>DB: SELECT active location
+    DB-->>Service: Active locations row
+    Service->>Weather: GET current weather for active location
     Weather-->>Service: Weather data
-    Service->>DB: Store readings entry
-    Service-->>Routes: Saved reading
+    Service->>DB: Store temperature_readings entry with location_id
+    Service-->>Routes: Saved reading with location and outdoor weather
     Routes-->>ESP32: 201 saved reading JSON
     ESP32->>ESP32: Update LCD
 ```
@@ -37,6 +39,13 @@ sequenceDiagram
     Flask-->>Browser: dashboard.html
     Browser->>Flask: GET /static/dashboard.css
     Browser->>Flask: GET /static/dashboard.js
+
+    Browser->>Routes: GET /api/locations
+    Routes->>Service: Get saved locations
+    Service->>DB: SELECT locations
+    DB-->>Service: Active and saved locations
+    Service-->>Routes: Locations data
+    Routes-->>Browser: Locations JSON
 
     Browser->>Routes: GET /api/readings/latest
     Routes->>Service: Get latest reading
@@ -63,8 +72,8 @@ The API uses compact JSON error responses:
 
 | Scenario | Status | Response |
 | --- | ---: | --- |
-| Missing `location` on POST | `400` | `{ "error": "location is required" }` |
-| Unknown weather location | `400` | `{ "error": "Could not find weather for <location>" }` |
+| Missing location nickname/value | `400` | `{ "error": "nickname is required" }` or `{ "error": "location is required" }` |
+| Unknown active weather location | `400` | `{ "error": "Could not find weather for the active location" }` |
 | Unsupported `sort_by` | `400` | `{ "error": "sort_by is not supported" }` |
 | Invalid `sort_dir` | `400` | `{ "error": "sort_dir must be asc or desc" }` |
 | Invalid history `hours` | `400` | `{ "error": "hours must be a number" }` |
