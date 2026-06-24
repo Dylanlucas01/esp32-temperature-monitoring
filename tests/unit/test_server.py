@@ -1,6 +1,6 @@
 import logging
 
-from server import configure_logging, describe_database_uri
+from app.server import configure_logging, describe_database_uri
 
 
 def test_describe_database_uri_hides_credentials():

@@ -5,9 +5,9 @@ from urllib.parse import urlsplit, urlunsplit
 
 from flask import Flask, send_file
 
-from config import Config
-from extensions import db
-from routes.sensor_data import sensor_data_bp
+from app.config import Config
+from app.extensions import db
+from app.routes.sensor_data import sensor_data_bp
 
 def describe_database_uri(database_uri):
     parsed_uri = urlsplit(database_uri)

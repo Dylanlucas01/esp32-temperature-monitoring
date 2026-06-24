@@ -18,20 +18,20 @@ install:
 	$(PIP) install -r requirements.txt
 
 run:
-	PORT=$(PORT) $(PYTHON) server.py
+	PYTHONPATH=src PORT=$(PORT) $(PYTHON) -m app.server
 
 test:
-	$(PYTHON) -m pytest
+	PYTHONPATH=src $(PYTHON) -m pytest
 
 test-unit:
-	$(PYTHON) -m pytest tests/unit
+	PYTHONPATH=src $(PYTHON) -m pytest tests/unit
 
 test-integration:
-	$(PYTHON) -m pytest tests/integration
+	PYTHONPATH=src $(PYTHON) -m pytest tests/integration
 
 check:
-	$(PYTHON) -m compileall server.py routes services models.py config.py extensions.py tests
-	$(PYTHON) -m pytest
+	PYTHONPATH=src $(PYTHON) -m compileall src tests
+	PYTHONPATH=src $(PYTHON) -m pytest
 
 clean:
 	find . -type d \( -name "__pycache__" -o -name ".pytest_cache" \) -prune -exec rm -rf {} +

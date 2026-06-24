@@ -1,6 +1,6 @@
 import pytest
 
-from services.openweather import (
+from app.services.openweather import (
     OPEN_WEATHER_URL,
     OpenWeatherConfigError,
     find_current_weather,
@@ -35,7 +35,7 @@ def test_find_current_weather_uses_openweather_params(app, monkeypatch):
         captured["timeout"] = timeout
         return FakeResponse({"list": [{"main": {"temp": 69.2, "humidity": 55}}]})
 
-    monkeypatch.setattr("services.openweather.requests.get", fake_get)
+    monkeypatch.setattr("app.services.openweather.requests.get", fake_get)
 
     with app.app_context():
         weather = find_current_weather("Redwood City")
@@ -53,7 +53,7 @@ def test_find_current_weather_uses_openweather_params(app, monkeypatch):
 
 def test_find_current_weather_returns_none_for_no_results(app, monkeypatch):
     monkeypatch.setattr(
-        "services.openweather.requests.get",
+        "app.services.openweather.requests.get",
         lambda url, params, timeout: FakeResponse({"list": []}),
     )
 

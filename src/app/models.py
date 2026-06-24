@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from extensions import db
+from app.extensions import db
 
 
 class Location(db.Model):
