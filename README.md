@@ -250,7 +250,7 @@ Example success response:
 }
 ```
 
-The reading is saved only after the server successfully resolves the active location and fetches current outdoor weather.
+The server caches OpenWeather results for five minutes per location. Each POST still saves a reading, but repeated posts within that cache window reuse the cached outdoor temperature and humidity.
 
 ## Deployment
 

@@ -54,7 +54,7 @@ Successful response:
 ```
 
 The response body is a compact LCD payload with the selected nickname, selected location, outdoor temperature, and outdoor humidity. The full reading is still stored by the server.
-The server saves the reading only after it successfully fetches current outdoor weather for the active location selected in the web app.
+The server caches OpenWeather results for five minutes per location, so frequent POSTs can reuse recent outdoor weather while still saving each indoor reading.
 
 ## Error Handling
 
