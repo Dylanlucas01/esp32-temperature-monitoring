@@ -90,6 +90,25 @@ def test_create_indoor_reading_uses_active_location(client, monkeypatch):
     assert data["location"] == "Redwood City"
 
 
+def test_create_indoor_reading_reuses_cached_weather(app, client, monkeypatch):
+    requested_locations = []
+
+    def fake_current_weather(location):
+        requested_locations.append(location)
+        return {"temp_f": 68.5, "humidity": 62}
+
+    monkeypatch.setattr("services.reading_service.find_current_weather", fake_current_weather)
+
+    first_response = client.post("/api/indoor", json={"temperature": 72.4, "humidity": 45.8})
+    second_response = client.post("/api/indoor", json={"temperature": 72.6, "humidity": 46.0})
+
+    assert first_response.status_code == 201
+    assert second_response.status_code == 201
+    assert requested_locations == ["Redwood City"]
+    with app.app_context():
+        assert Reading.query.count() == 2
+
+
 def test_create_indoor_reading_handles_unknown_weather_location(client, monkeypatch):
     monkeypatch.setattr("services.reading_service.find_current_weather", lambda location: None)
 

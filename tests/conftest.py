@@ -18,9 +18,11 @@ def app(tmp_path, monkeypatch):
 
     from extensions import db
     from server import create_app
+    from services.reading_service import clear_weather_cache
 
     test_app = create_app()
     test_app.config.update(TESTING=True)
+    clear_weather_cache()
 
     with test_app.app_context():
         db.drop_all()
@@ -31,6 +33,7 @@ def app(tmp_path, monkeypatch):
     with test_app.app_context():
         db.session.remove()
         db.drop_all()
+    clear_weather_cache()
 
 
 @pytest.fixture
