@@ -12,13 +12,13 @@ def app(tmp_path, monkeypatch):
     monkeypatch.setenv("OPENWEATHER_API_KEY", "test-api-key")
     monkeypatch.setenv("LOG_LEVEL", "CRITICAL")
 
-    for module_name in ("config", "server"):
+    for module_name in ("app.config", "app.server"):
         if module_name in sys.modules:
             importlib.reload(sys.modules[module_name])
 
-    from extensions import db
-    from server import create_app
-    from services.reading_service import clear_weather_cache
+    from app.extensions import db
+    from app.server import create_app
+    from app.services.weather_service import clear_weather_cache
 
     test_app = create_app()
     test_app.config.update(TESTING=True)

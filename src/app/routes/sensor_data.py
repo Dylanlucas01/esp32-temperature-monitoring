@@ -1,22 +1,23 @@
 import requests
 from flask import Blueprint, current_app, jsonify, request
 
-from services.openweather import OpenWeatherConfigError
-from services.reading_service import (
+from app.services.openweather import OpenWeatherConfigError
+from app.services.location_service import (
     DEFAULT_LOCATION_NAME,
     create_location,
-    create_reading,
     delete_location,
-    fetch_current_weather_for_location,
     get_active_location,
-    get_latest_reading_data,
     get_locations_data,
-    get_paginated_reading_data,
-    get_reading_history_data,
     serialize_location,
-    serialize_reading,
     set_active_location,
 )
+from app.services.reading_service import (
+    create_reading,
+    get_latest_reading_data,
+    get_paginated_reading_data,
+    get_reading_history_data,
+)
+from app.services.weather_service import fetch_current_weather_for_location
 
 sensor_data_bp = Blueprint("sensor_data", __name__)
 

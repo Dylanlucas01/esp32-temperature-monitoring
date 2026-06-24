@@ -2,9 +2,9 @@ from datetime import datetime, timedelta, timezone
 
 import requests
 
-from extensions import db
-from models import Location, Reading
-from services.openweather import OpenWeatherConfigError
+from app.extensions import db
+from app.models import Location, Reading
+from app.services.openweather import OpenWeatherConfigError
 
 
 def add_location(nickname="Home", location="Redwood City", is_active=True):
@@ -54,7 +54,7 @@ def test_weather_history_page(client):
 
 def test_create_indoor_reading_saves_weather_data(client, monkeypatch):
     monkeypatch.setattr(
-        "services.reading_service.find_current_weather",
+        "app.services.weather_service.find_current_weather",
         lambda location: {"temp_f": 68.5, "humidity": 62},
     )
 
@@ -78,7 +78,7 @@ def test_create_indoor_reading_saves_weather_data(client, monkeypatch):
 
 def test_create_indoor_reading_uses_active_location(client, monkeypatch):
     monkeypatch.setattr(
-        "services.reading_service.find_current_weather",
+        "app.services.weather_service.find_current_weather",
         lambda location: {"temp_f": 68.5, "humidity": 62},
     )
 
@@ -97,7 +97,7 @@ def test_create_indoor_reading_reuses_cached_weather(app, client, monkeypatch):
         requested_locations.append(location)
         return {"temp_f": 68.5, "humidity": 62}
 
-    monkeypatch.setattr("services.reading_service.find_current_weather", fake_current_weather)
+    monkeypatch.setattr("app.services.weather_service.find_current_weather", fake_current_weather)
 
     first_response = client.post("/api/indoor", json={"temperature": 72.4, "humidity": 45.8})
     second_response = client.post("/api/indoor", json={"temperature": 72.6, "humidity": 46.0})
@@ -110,7 +110,7 @@ def test_create_indoor_reading_reuses_cached_weather(app, client, monkeypatch):
 
 
 def test_create_indoor_reading_handles_unknown_weather_location(client, monkeypatch):
-    monkeypatch.setattr("services.reading_service.find_current_weather", lambda location: None)
+    monkeypatch.setattr("app.services.weather_service.find_current_weather", lambda location: None)
 
     response = client.post(
         "/api/indoor",
@@ -148,7 +148,7 @@ def test_activating_location_returns_current_outdoor_weather(client, monkeypatch
         requested_locations.append(location)
         return {"temp_f": 71.5, "humidity": 54}
 
-    monkeypatch.setattr("services.reading_service.find_current_weather", fake_current_weather)
+    monkeypatch.setattr("app.services.weather_service.find_current_weather", fake_current_weather)
     locations_response = client.get("/api/locations")
     roaming = next(
         location
@@ -233,7 +233,7 @@ def test_create_indoor_reading_handles_weather_config_error(client, monkeypatch)
     def raise_config_error(location):
         raise OpenWeatherConfigError("missing key")
 
-    monkeypatch.setattr("services.reading_service.find_current_weather", raise_config_error)
+    monkeypatch.setattr("app.services.weather_service.find_current_weather", raise_config_error)
 
     response = client.post(
         "/api/indoor",
@@ -248,7 +248,7 @@ def test_outdoor_current_handles_weather_request_error(client, monkeypatch):
     def raise_request_error(location):
         raise requests.Timeout("timed out")
 
-    monkeypatch.setattr("services.reading_service.find_current_weather", raise_request_error)
+    monkeypatch.setattr("app.services.weather_service.find_current_weather", raise_request_error)
 
     response = client.get("/api/outdoor/current?location=Redwood%20City")
 
