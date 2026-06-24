@@ -30,6 +30,7 @@ This project demonstrates the integration of embedded systems, backend services,
 - Flask REST API
 - Sensor data ingestion endpoints
 - Weather API integration
+- Saved locations with one active location for ESP32 uploads
 - Business logic and data processing
 - Request, weather, validation, and database logging
 - Pytest coverage for backend routes and service helpers
@@ -52,7 +53,7 @@ This project demonstrates the integration of embedded systems, backend services,
 ## System Workflow
 
 1. The ESP32 reads temperature and humidity data from the DHT11 sensor.
-2. Sensor readings are sent to the Flask API.
+2. Sensor readings are queued by the firmware and sent to the Flask API every 5 minutes.
 3. The backend retrieves outdoor weather information for the active saved location.
 4. The backend stores the indoor reading together with the outdoor weather values in the configured SQL database.
 5. The saved reading is returned to the ESP32 and can be displayed on the LCD.
@@ -144,23 +145,3 @@ The ESP32 communicates exclusively through REST endpoints, allowing the device, 
 
 ---
 
-## Challenges
-
-- Configuring reliable Wi-Fi connectivity
-- Implementing accurate time synchronization
-- Managing limited LCD display space
-- Designing a flexible database schema
-- Deploying and maintaining cloud services
-- Debugging interactions between embedded and backend components
-- Keeping backend behavior testable without requiring live weather API calls
-
----
-
-## Future Improvements
-
-- Support for multiple ESP32 devices
-- User authentication
-- Alerting and notifications
-- Additional sensors
-- Containerized deployment
-- CI/CD pipelines that run the existing automated tests

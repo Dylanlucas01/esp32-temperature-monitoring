@@ -5,22 +5,29 @@
 ```mermaid
 sequenceDiagram
     participant ESP32 as ESP32 firmware
-    participant Routes as routes/sensor_data.py
-    participant Service as services/reading_service.py
+    participant Routes as src/app/routes/sensor_data.py
+    participant Reading as src/app/services/reading_service.py
+    participant Location as src/app/services/location_service.py
+    participant WeatherService as src/app/services/weather_service.py
     participant Weather as OpenWeather
     participant DB as Database
 
     ESP32->>ESP32: Read DHT11
+    ESP32->>ESP32: Queue latest reading every 5 minutes
     ESP32->>Routes: POST /api/indoor
     ESP32->>Routes: { temperature, humidity }
     Routes->>Routes: Parse indoor sensor values
-    Routes->>Service: Create reading
-    Service->>DB: SELECT active location
-    DB-->>Service: Active locations row
-    Service->>Weather: GET current weather for active location
-    Weather-->>Service: Weather data
-    Service->>DB: Store temperature_readings entry with location_id
-    Service-->>Routes: Saved reading with location and outdoor weather
+    Routes->>Reading: create_reading()
+    Reading->>Location: Get active location
+    Location->>DB: SELECT active location
+    DB-->>Location: Active locations row
+    Location-->>Reading: Active location
+    Reading->>WeatherService: Fetch current weather
+    WeatherService->>Weather: GET current weather when cache misses
+    Weather-->>WeatherService: Weather data
+    WeatherService-->>Reading: Current weather
+    Reading->>DB: Store temperature_readings entry with location_id
+    Reading-->>Routes: Saved reading with location and outdoor weather
     Routes-->>ESP32: 201 saved reading JSON
     ESP32->>ESP32: Update LCD
 ```
@@ -31,8 +38,9 @@ sequenceDiagram
 sequenceDiagram
     participant Browser
     participant Flask as Flask app
-    participant Routes as routes/sensor_data.py
-    participant Service as services/reading_service.py
+    participant Routes as src/app/routes/sensor_data.py
+    participant Location as src/app/services/location_service.py
+    participant Reading as src/app/services/reading_service.py
     participant DB as Database
 
     Browser->>Flask: GET /
@@ -41,24 +49,24 @@ sequenceDiagram
     Browser->>Flask: GET /static/dashboard.js
 
     Browser->>Routes: GET /api/locations
-    Routes->>Service: Get saved locations
-    Service->>DB: SELECT locations
-    DB-->>Service: Active and saved locations
-    Service-->>Routes: Locations data
+    Routes->>Location: Get saved locations
+    Location->>DB: SELECT locations
+    DB-->>Location: Active and saved locations
+    Location-->>Routes: Locations data
     Routes-->>Browser: Locations JSON
 
     Browser->>Routes: GET /api/readings/latest
-    Routes->>Service: Get latest reading
-    Service->>DB: SELECT newest reading
-    DB-->>Service: Latest reading or none
-    Service-->>Routes: Latest reading data
+    Routes->>Reading: Get latest reading
+    Reading->>DB: SELECT newest reading
+    DB-->>Reading: Latest reading or none
+    Reading-->>Routes: Latest reading data
     Routes-->>Browser: Latest reading JSON
 
     Browser->>Routes: GET /api/readings/history?hours=12
-    Routes->>Service: Get reading history
-    Service->>DB: SELECT readings newer than cutoff
-    DB-->>Service: Time-ordered readings
-    Service-->>Routes: History data
+    Routes->>Reading: Get reading history
+    Reading->>DB: SELECT readings newer than cutoff
+    DB-->>Reading: Time-ordered readings
+    Reading-->>Routes: History data
     Routes-->>Browser: History JSON
 
     Browser->>Browser: Render metric cards and canvas chart

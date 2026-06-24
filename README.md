@@ -17,19 +17,23 @@ A small Flask web app for collecting indoor temperature and humidity readings fr
 
 Additional project documentation can be found in the [`docs`](docs) directory:
 
+- [Documentation Index](docs/index.md)
+- [API and Data Flow](docs/api-flow.md)
 - [Sequence Diagram](docs/sequence-diagram.md)
 - [Database Design](docs/database-design.md)
 - [Firmware Architecture](docs/firmware-architecture.md)
+- [Hardware and Wiring](docs/hardware.md)
 - [Engineering Decisions](docs/tradeoffs-and-decisions.md)
-- [Future Improvements](docs/future-improvements.md)
 
 ## Project Structure
 
-- `server.py` creates the Flask app, registers blueprints, and serves the static pages.
-- `routes/sensor_data.py` defines the sensor and readings API routes.
-- `services/reading_service.py` handles reading serialization, database queries, and reading creation.
-- `services/openweather.py` handles OpenWeather API calls.
-- `models.py` defines the SQLAlchemy `Location` and `Reading` models.
+- `src/app/server.py` creates the Flask app, registers blueprints, and serves the static pages.
+- `src/app/routes/sensor_data.py` defines the sensor and readings API routes.
+- `src/app/services/location_service.py` handles saved locations, active location selection, and default locations.
+- `src/app/services/reading_service.py` handles reading serialization, database queries, and reading creation.
+- `src/app/services/weather_service.py` handles cached weather lookups for app workflows.
+- `src/app/services/openweather.py` handles OpenWeather API calls.
+- `src/app/models.py` defines the SQLAlchemy `Location` and `Reading` models.
 - `tests/unit/` contains direct helper and service tests.
 - `tests/integration/` contains Flask route tests using a temporary database.
 - `Makefile` wraps common local development commands.
@@ -61,7 +65,7 @@ Run the app:
 make run
 ```
 
-Open <http://localhost:5000>.
+Open <http://localhost:5001>.
 
 By default, the app uses SQLite at `/tmp/esp32_temperature.db`. The database tables are created automatically the first time an API route needs them.
 
@@ -69,7 +73,7 @@ You can still run the commands directly if needed:
 
 ```bash
 pip install -r requirements.txt
-python server.py
+PYTHONPATH=src python -m app.server
 ```
 
 ## Development Commands
@@ -80,7 +84,7 @@ The Makefile defaults to `.venv/bin/python` and `.venv/bin/pip`.
 | --- | --- |
 | `make help` | Show available Makefile targets. |
 | `make install` | Install Python dependencies from `requirements.txt`. |
-| `make run` | Start the Flask app on port `5000`. |
+| `make run` | Start the Flask app on port `5001`. |
 | `make run PORT=8000` | Start the app on a custom port. |
 | `make test` | Run the pytest suite. |
 | `make test-unit` | Run only unit tests. |
@@ -95,7 +99,7 @@ The Makefile defaults to `.venv/bin/python` and `.venv/bin/pip`.
 | `OPENWEATHER_API_KEY` | Yes | API key used to fetch current outdoor weather. |
 | `DATABASE_URL` | No | Database connection string. Defaults to local SQLite. `postgres://` URLs are automatically converted for `psycopg`. |
 | `LOG_LEVEL` | No | Python logging level. Defaults to `INFO`. Use `DEBUG` for schema-check logs or `WARNING` to reduce normal request logs. |
-| `PORT` | No | Port used by `server.py`. Defaults to `5000`. |
+| `PORT` | No | Port used by `src/app/server.py`. Defaults to `5001`. |
 
 ## Testing
 
@@ -250,6 +254,8 @@ Example success response:
 }
 ```
 
+The firmware requires `outside_temperature` and can use `location` when present. It can ignore `nickname` and `outside_humidity` if the LCD flow does not need them.
+
 The server caches OpenWeather results for five minutes per location. Each POST still saves a reading, but repeated posts within that cache window reuse the cached outdoor temperature and humidity.
 
 ## Deployment
@@ -257,7 +263,7 @@ The server caches OpenWeather results for five minutes per location. Each POST s
 This project includes a `Procfile` for platforms that run Gunicorn:
 
 ```bash
-web: gunicorn server:app
+web: gunicorn --pythonpath src app.server:app
 ```
 
 For production, set:

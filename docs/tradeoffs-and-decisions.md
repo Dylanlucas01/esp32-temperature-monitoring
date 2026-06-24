@@ -24,13 +24,13 @@ Benefits:
 
 Tradeoffs:
 
-- Every reading write depends on OpenWeather availability.
-- Every stored reading can consume an OpenWeather API call.
+- Every reading write depends on OpenWeather availability unless a fresh cached result exists.
+- Weather cache misses consume an OpenWeather API call.
 - If the weather API fails, the indoor reading is not stored.
 
 ## Minimal Validation
 
-The API currently requires `location`, validates pagination/sorting parameters, and passes sensor values through as floats or nullable values.
+The API validates location management inputs and pagination/sorting parameters, but passes ESP32 sensor values through as floats or nullable values.
 
 Tradeoff: This is forgiving for early firmware development, but it can store incomplete or unrealistic sensor values. Production should validate numeric ranges and reject malformed sensor payloads.
 
@@ -49,7 +49,7 @@ Tradeoff: If the ESP32 buffers readings while offline, delayed uploads will not 
 
 OpenWeather configuration errors return `503`; request failures return `502`; bad client inputs return `400`.
 
-The backend logs request flow, validation failures, OpenWeather lookup outcomes, database query counts, and database commit failures. Startup logs include whether OpenWeather is configured and a sanitized database URI shape without credentials.
+The backend logs request flow, validation failures, OpenWeather lookup outcomes, database query counts, and database commit failures. The database URI helper intentionally returns a sanitized URI shape without credentials when used.
 
 Tradeoff: The responses are simple and useful for firmware, and the logs provide useful operational breadcrumbs. Error handling is still route-local rather than centralized, and the log format is conventional text rather than full JSON structured logging.
 
