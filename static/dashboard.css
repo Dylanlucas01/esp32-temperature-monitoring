@@ -58,15 +58,16 @@ h1 {
 }
 
 .location-heading {
-  min-width: min(100%, 440px);
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .location-title-select {
   display: block;
-  width: min(100%, 520px);
+  width: 100%;
   min-height: 52px;
   margin: 0 0 8px;
-  padding: 0 42px 0 0;
+  padding: 0 34px 0 0;
   color: var(--text);
   background: transparent;
   border: 0;
@@ -590,6 +591,13 @@ tbody tr:hover td {
   .top {
     display: block;
     padding: 22px;
+  }
+
+  .location-title-select {
+    width: 100%;
+    min-height: 42px;
+    padding-right: 28px;
+    font-size: clamp(1.05rem, 5.4vw, 1.65rem);
   }
 
   .time {
